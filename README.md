@@ -123,3 +123,13 @@ This is an experimental research project. Contributions welcome!
 - GNU Hurd developers
 - Apple XNU team (open source kernel)
 - OSX-KVM / DarwinKVM communities
+
+## Clone with Submodules
+
+```bash
+# Clone with all submodules (hurd + xnu sources)
+git clone --recursive https://github.com/J-x-Z/hurd-xnu
+
+# Or if you already cloned:
+git submodule update --init --recursive
+```
