@@ -1,0 +1,31 @@
+/*
+ * fsys_xnu.defs - Simplified FSYS interface for XNU MIG
+ * 
+ * Minimal subset needed for basic trivfs operation.
+ */
+
+subsystem fsys 22000;
+
+#include "hurd_types_xnu.defs"
+
+/* Get root of filesystem */
+routine fsys_getroot (
+	fsys: fsys_t;
+	dotdot: mach_port_t;
+	gen_uids: idarray_t;
+	gen_gids: idarray_t;
+	flags: int;
+	out do_retry: retry_type;
+	out retry_name: string_t;
+	out result: mach_port_send_t);
+
+/* Shut down the filesystem */
+routine fsys_goaway (
+	fsys: fsys_t;
+	flags: int);
+
+/* Sync the filesystem */
+routine fsys_syncfs (
+	fsys: fsys_t;
+	wait: int;
+	do_children: int);

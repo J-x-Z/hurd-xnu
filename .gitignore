@@ -1,0 +1,34 @@
+# Ignore build artifacts
+*.o
+*.a
+*.log
+*.img
+*.dmg
+*.qcow2
+
+# macOS
+.DS_Store
+._*
+
+# IDE
+.vscode/
+.idea/
+
+# Temp files
+/tmp/
+*.swp
+*~
+
+# Large binaries
+qemu/OSX-KVM/BaseSystem.*
+qemu/OSX-KVM/mac_hdd_ng.img
+qemu/OSX-KVM/download.log
+qemu/DarwinKVM/
+qemu/darwin-xnu-build/
+
+# Submodules handled separately
+/hurd/
+/xnu/
+
+# Compiled binaries
+hello_translator

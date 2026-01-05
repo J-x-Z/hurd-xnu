@@ -1,0 +1,41 @@
+/*
+ * io_xnu.defs - Simplified IO interface for XNU MIG testing
+ * 
+ * This is a minimal version of Hurd's io.defs to test MIG compatibility.
+ * Only includes the most essential routines.
+ */
+
+subsystem io 21000;
+
+#include "hurd_types_xnu.defs"
+
+/* Read data from an IO object */
+routine io_read (
+	io_object: io_t;
+	out data: data_t, dealloc;
+	offset: loff_t;
+	amount: vm_size_t);
+
+/* Write data to an IO object */
+routine io_write (
+	io_object: io_t;
+	data: data_t;
+	offset: loff_t;
+	out amount: vm_size_t);
+
+/* Seek within an IO object */
+routine io_seek (
+	io_object: io_t;
+	offset: loff_t;
+	whence: int;
+	out newp: loff_t);
+
+/* Get how much data is readable */
+routine io_readable (
+	io_object: io_t;
+	out amount: vm_size_t);
+
+/* Duplicate the IO port */
+routine io_duplicate (
+	io_object: io_t;
+	out newport: mach_port_send_t);

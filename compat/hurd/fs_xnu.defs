@@ -1,0 +1,35 @@
+/*
+ * fs_xnu.defs - Simplified FS interface for XNU MIG
+ * 
+ * Minimal subset needed for basic trivfs/hello translator.
+ */
+
+subsystem fs 20000;
+
+#include "hurd_types_xnu.defs"
+
+/* Check access permissions */
+routine file_check_access (
+	file: file_t;
+	out allowed: int);
+
+/* Return filesystem status */
+routine file_statfs (
+	file: file_t;
+	out info: fsys_statfsbuf_t);
+
+/* Sync the file */
+routine file_sync (
+	file: file_t;
+	wait: int;
+	omit_metadata: int);
+
+/* Change mode bits */
+routine file_chmod (
+	chmod_file: file_t;
+	new_mode: mode_t);
+
+/* Get translator (stub) */
+routine file_get_translator (
+	file: file_t;
+	out translator: data_t, dealloc);

@@ -1,0 +1,97 @@
+/*
+ * hurd_types_xnu.defs - Simplified Hurd types for XNU MIG
+ * 
+ * This is a stripped-down version of hurd_types.defs that works with
+ * Apple's MIG which has stricter parsing requirements.
+ * 
+ * Key differences:
+ * 1. Struct definitions are replaced with opaque byte arrays
+ * 2. Some preprocessor dependencies are removed
+ */
+
+#include <mach/std_types.defs>
+#include <mach/mach_types.defs>
+
+/* Basic Hurd port types - all are send rights */
+type file_t = mach_port_copy_send_t;
+type fsys_t = mach_port_copy_send_t;
+type io_t = mach_port_copy_send_t;
+type process_t = mach_port_copy_send_t;
+type auth_t = mach_port_copy_send_t;
+type socket_t = mach_port_copy_send_t;
+type pf_t = mach_port_copy_send_t;
+type addr_port_t = mach_port_copy_send_t;
+type term_t = mach_port_copy_send_t;
+type startup_t = mach_port_copy_send_t;
+type fs_notify_t = mach_port_copy_send_t;
+type exec_startup_t = mach_port_copy_send_t;
+type interrupt_t = mach_port_copy_send_t;
+type pci_t = mach_port_copy_send_t;
+type shutdown_t = mach_port_copy_send_t;
+type acpi_t = mach_port_copy_send_t;
+type proccoll_t = mach_port_copy_send_t;
+
+/* Reply port type */
+type sreply_port_t = MACH_MSG_TYPE_MAKE_SEND_ONCE | polymorphic
+	ctype: mach_port_t;
+
+/* Additional types for interrupt interface */
+type natural_t = unsigned;
+type mach_port_seqno_t = unsigned;
+
+/* RPC macros */
+#ifdef REPLY_PORTS
+#define RPTDECL	sreplyport reply: sreply_port_t
+#define RPT	RPTDECL;
+#define RPTLAST	; RPTDECL
+#else
+#define RPTLAST
+#define RPT
+#endif
+
+#define RETURN_CODE_ARG in return_code: kern_return_t, retcode
+
+/* Data types */
+type data_t = array[] of char;
+type string_t = c_string[1024];
+type uid_t = uint32_t;
+type gid_t = uint32_t;
+type mode_t = uint32_t;
+type retry_type = uint32_t;
+type pid_t = int32_t;
+type wait_status_t = int32_t;
+type loff_t = int64_t;
+type ino64_t = int64_t;
+type file_changed_type_t = uint32_t;
+type dir_changed_type_t = uint32_t;
+
+type portarray_t = array[] of mach_port_send_t;
+type intarray_t = array[] of int;
+type off_array_t = array[] of loff_t;
+type pidarray_t = array[] of pid_t;
+type procinfo_t = array[] of int;
+type idarray_t = array[] of uid_t;
+
+/* Struct types as opaque byte arrays (flock, stat, etc) */
+/* flock_t: int, int, int64, int64, int32 = 28 bytes, round to 32 */
+type flock_t = struct[8] of int;
+
+/* timespec: tv_sec (long) + tv_nsec (long) = 16 bytes on 64-bit */
+type timespec_t = struct[4] of int;
+type timeval = timespec_t;
+
+/* io_statbuf_t is 144 bytes on 64-bit Linux/Hurd, use 160 for safety */
+type io_statbuf_spare_int = struct[8] of int;
+type io_statbuf_t = struct[40] of int;
+
+/* fsys_statfsbuf_t is variable, use generous size */
+type fsys_statfsbuf_t = struct[32] of int;
+
+/* rusage_t is 144 bytes on 64-bit */
+type rusage_t = struct[36] of int;
+
+/* utsname_t */
+type utsname_t = struct[320] of char;
+
+import <sys/types.h>;
+import <mach/mach_types.h>;

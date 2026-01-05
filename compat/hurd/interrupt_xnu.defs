@@ -1,0 +1,17 @@
+/*
+ * interrupt_xnu.defs - Simplified interrupt interface for XNU MIG
+ * 
+ * Based on Hurd's interrupt.defs but using XNU-compatible type definitions.
+ */
+
+subsystem interrupt 33000;
+
+#include "hurd_types_xnu.defs"
+
+/* Cause a pending request on this object to immediately return.  The
+   exact semantics are dependent on the specific object.  */
+
+routine
+interrupt_operation (object: interrupt_t;
+                     waittime timeout: natural_t;
+                     msgseqno seqno: mach_port_seqno_t);
