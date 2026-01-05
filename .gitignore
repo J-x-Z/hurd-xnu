@@ -27,8 +27,6 @@ qemu/DarwinKVM/
 qemu/darwin-xnu-build/
 
 # Submodules handled separately
-/hurd/
-/xnu/
 
 # Compiled binaries
 hello_translator

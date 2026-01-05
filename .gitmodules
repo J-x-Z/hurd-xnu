@@ -1,0 +1,6 @@
+[submodule "hurd"]
+	path = hurd
+	url = https://github.com/J-x-Z/hurd.git
+[submodule "xnu"]
+	path = xnu
+	url = https://github.com/J-x-Z/xnu.git
