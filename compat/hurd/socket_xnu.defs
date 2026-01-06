@@ -1,0 +1,83 @@
+/* XNU-compatible socket.defs for Hurd pfinet server
+   Simplified subset for TCP/IP networking */
+
+subsystem socket 26100;
+
+#include <mach/std_types.defs>
+#include <mach/mach_types.defs>
+
+/* Type definitions */
+type socket_t = mach_port_t;
+type addr_port_t = mach_port_t;
+type data_t = array[] of char;
+type sockaddr_t = struct[16] of char;
+
+/* 26100: Create socket */
+routine socket_create (
+	server: socket_t;
+	sock_type: int;
+	protocol: int;
+	out sock: mach_port_t);
+
+/* 26101: Bind address */
+routine socket_bind (
+	sock: socket_t;
+	addr: sockaddr_t);
+
+/* 26102: Listen for connections */
+routine socket_listen (
+	sock: socket_t;
+	backlog: int);
+
+/* 26103: Accept connection */
+routine socket_accept (
+	sock: socket_t;
+	out conn: mach_port_t;
+	out peer_addr: sockaddr_t);
+
+/* 26104: Connect to address */
+routine socket_connect (
+	sock: socket_t;
+	addr: sockaddr_t);
+
+/* 26105: Send data */
+routine socket_send (
+	sock: socket_t;
+	data: data_t;
+	flags: int;
+	out amount: int);
+
+/* 26106: Receive data */
+routine socket_recv (
+	sock: socket_t;
+	out data: data_t;
+	flags: int;
+	amount: int);
+
+/* 26107: Get socket name */
+routine socket_name (
+	sock: socket_t;
+	out addr: sockaddr_t);
+
+/* 26108: Get peer name */
+routine socket_peername (
+	sock: socket_t;
+	out addr: sockaddr_t);
+
+/* 26109: Shutdown socket */
+routine socket_shutdown (
+	sock: socket_t;
+	how: int);
+
+/* 26110: Get/Set socket option */
+routine socket_getopt (
+	sock: socket_t;
+	level: int;
+	option: int;
+	out optval: data_t);
+
+routine socket_setopt (
+	sock: socket_t;
+	level: int;
+	option: int;
+	optval: data_t);

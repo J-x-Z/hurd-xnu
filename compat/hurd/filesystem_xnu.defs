@@ -1,0 +1,112 @@
+/* XNU-compatible fs.defs for Hurd ext2fs translator
+   Simplified filesystem operations */
+
+subsystem fs 22000;
+
+#include <mach/std_types.defs>
+#include <mach/mach_types.defs>
+
+/* Type definitions */
+type file_t = mach_port_t;
+type io_t = mach_port_t;
+type data_t = array[] of char;
+type off_t = int64;
+type mode_t = int;
+type uid_t = unsigned32;
+type gid_t = unsigned32;
+
+/* 22000: Dir lookup */
+routine dir_lookup (
+	dir: file_t;
+	name: data_t;
+	flags: int;
+	mode: mode_t;
+	out do_retry: int;
+	out retry_name: data_t;
+	out file: mach_port_t);
+
+/* 22001: Read directory */
+routine dir_readdir (
+	dir: file_t;
+	out data: data_t;
+	entry: int;
+	nentries: int;
+	bufsiz: int;
+	out amount: int);
+
+/* 22002: Make directory */
+routine dir_mkdir (
+	dir: file_t;
+	name: data_t;
+	mode: mode_t);
+
+/* 22003: Remove directory */
+routine dir_rmdir (
+	dir: file_t;
+	name: data_t);
+
+/* 22004: Unlink file */
+routine dir_unlink (
+	dir: file_t;
+	name: data_t);
+
+/* 22005: Link file */
+routine dir_link (
+	dir: file_t;
+	source: file_t;
+	name: data_t;
+	excl: int);
+
+/* 22006: Rename file */
+routine dir_rename (
+	olddir: file_t;
+	oldname: data_t;
+	newdir: file_t;
+	newname: data_t;
+	excl: int);
+
+/* 22007: Make node */
+routine dir_mkfile (
+	dir: file_t;
+	flags: int;
+	mode: mode_t;
+	out file: mach_port_t);
+
+/* 22008: Get file stat */
+routine file_getstat (
+	file: file_t;
+	out stat_data: data_t);
+
+/* 22009: Set file stat */
+routine file_setstat (
+	file: file_t;
+	stat_data: data_t;
+	stat_flags: int);
+
+/* 22010: Sync file */
+routine file_sync (
+	file: file_t;
+	wait: int;
+	omit_metadata: int);
+
+/* 22011: Set file size */
+routine file_set_size (
+	file: file_t;
+	size: off_t);
+
+/* io operations subset */
+skip; skip; skip; /* 22012-22014 */
+
+/* 22015: Read */
+routine io_read (
+	io: io_t;
+	out data: data_t;
+	offset: off_t;
+	amount: int);
+
+/* 22016: Write */
+routine io_write (
+	io: io_t;
+	data: data_t;
+	offset: off_t;
+	out amount: int);

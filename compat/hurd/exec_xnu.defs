@@ -1,0 +1,59 @@
+/* XNU-compatible exec.defs for Hurd exec server
+   Simplified subset for ELF loading */
+
+subsystem exec 26000;
+
+#include <mach/std_types.defs>
+#include <mach/mach_types.defs>
+
+/* Type definitions */
+type exec_t = mach_port_t;
+type file_t = mach_port_t;
+type auth_t = mach_port_t;
+type data_t = array[] of char;
+type portarray_t = array[] of mach_port_t;
+type intarray_t = array[] of int;
+
+/* 26000: Execute a file */
+routine exec_exec (
+	execserver: exec_t;
+	file: file_t;
+	oldtask: mach_port_t;
+	flags: int;
+	argv: data_t;
+	envp: data_t;
+	dtable: portarray_t;
+	portarray: portarray_t;
+	intarray: intarray_t;
+	deallocnames: portarray_t;
+	destroynames: portarray_t);
+
+/* 26001: Set exec data */
+routine exec_setexecdata (
+	execserver: exec_t;
+	ports: portarray_t;
+	ints: intarray_t);
+
+/* 26002: Execute with task */
+routine exec_exec_file (
+	execserver: exec_t;
+	file: file_t;
+	task: mach_port_t;
+	flags: int;
+	filename: data_t);
+
+/* 26003: Startup info */
+routine exec_startup_get_info (
+	bootstrap: mach_port_t;
+	out user_entry: int;
+	out phdr_data: int;
+	out phdr_size: int;
+	out base_addr: int;
+	out stack_base: int;
+	out stack_size: int;
+	out flags: int;
+	out argv: data_t;
+	out envp: data_t;
+	out dtable: portarray_t;
+	out portarray: portarray_t;
+	out intarray: intarray_t);

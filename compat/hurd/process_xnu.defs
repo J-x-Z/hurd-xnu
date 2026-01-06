@@ -1,0 +1,79 @@
+/* XNU-compatible process.defs for Hurd proc server
+   Simplified subset of key RPC routines */
+
+subsystem process 24000;
+
+#include <mach/std_types.defs>
+#include <mach/mach_types.defs>
+
+/* Type definitions */
+type process_t = mach_port_t;
+type pid_t = int;
+type uid_t = unsigned32;
+type pidarray_t = array[] of pid_t;
+
+/* Skip slots 0-3 (deprecated) */
+skip; skip; skip; skip;
+
+/* 24004: Get privileged ports */
+routine proc_getprivports (
+	process: process_t;
+	out host_priv: mach_port_t;
+	out device_master: mach_port_t);
+
+/* 24005: Get all PIDs */
+routine proc_getallpids (
+	process: process_t;
+	out pidarray: pidarray_t);
+
+/* Skip 24006-24007 */
+skip; skip;
+
+/* 24008: Get uname */
+skip; /* proc_uname - complex return type */
+
+/* 24009: Register version */
+skip;
+
+/* Skip to key routines */
+skip; /* 24010 */
+skip; /* 24011 proc_child */
+skip; /* 24012 proc_setmsgport */
+skip; /* 24013 proc_reassign */
+skip; /* 24014 proc_setowner */
+
+/* 24015: Get PIDs */
+routine proc_getpids (
+	process: process_t;
+	out pid: pid_t;
+	out ppid: pid_t;
+	out orphaned: int);
+
+/* Skip to proc_wait */
+skip; /* 24016 */
+skip; /* 24017 */
+skip; /* 24018 */
+
+/* 24019: Wait for child */
+routine proc_wait (
+	process: process_t;
+	pid: pid_t;
+	options: int;
+	out status: int;
+	out sigcode: int;
+	out pid_status: pid_t);
+
+/* Skip to task/pid conversion */
+skip; skip; skip; skip; skip; skip; skip; skip; /* 24020-24027 */
+
+/* 24028: pid to task */
+routine proc_pid2task (
+	process: process_t;
+	pid: pid_t;
+	out task: mach_port_t);
+
+/* 24029: task to pid */
+routine proc_task2pid (
+	process: process_t;
+	task: mach_port_t;
+	out pid: pid_t);

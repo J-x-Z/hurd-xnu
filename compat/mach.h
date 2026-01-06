@@ -22,6 +22,9 @@
 /* mach_msg_seqno_t exists in Hurd's Mach but not XNU's mach.h directly */
 typedef unsigned int mach_msg_seqno_t;
 
+/* Include sys/types.h for pid_t and other standard types */
+#include <sys/types.h>
+
 /* macOS doesn't have pthread_spinlock_t - use rwlock as a workaround */
 #ifndef PTHREAD_SPINLOCK_COMPAT
 #define PTHREAD_SPINLOCK_COMPAT
@@ -54,15 +57,18 @@ typedef mach_port_t term_t;
 typedef mach_port_t startup_t;
 typedef mach_port_t interrupt_t;
 typedef mach_port_t fs_notify_t;
+typedef mach_port_t exec_t;
 typedef mach_port_t exec_startup_t;
 
 /* Additional types for MIG-generated code */
 typedef char *data_t;
 typedef unsigned int *intarray_t;
 typedef unsigned int *idarray_t;
+typedef int *pidarray_t;
 typedef mach_port_t *portarray_t;
 typedef int retry_type;
 typedef char *string_t;
+typedef char sockaddr_t[16];
 
 /* fsys_statfsbuf_t - simplified statfs buffer */
 typedef struct {
