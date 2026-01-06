@@ -345,12 +345,10 @@ int rumpuser_getfileinfo(const char *path, uint64_t *size, int *type)
 }
 
 /*
- * Test program
+ * I/O vector operations
  */
-#ifdef RUMPUSER_TEST
 #include <sys/uio.h>
 
-/* I/O vector operations */
 int rumpuser_iovread(int fd, struct iovec *iov, size_t iovcnt,
                      int64_t off, size_t *retval)
 {
@@ -399,7 +397,9 @@ int rumpuser_syncfd(int fd, int flags, uint64_t start, uint64_t len)
     return 0;
 }
 
-/* Read-write lock */
+/*
+ * Read-write lock
+ */
 void rumpuser_rw_init(void **rw)
 {
     pthread_rwlock_t *rwl = malloc(sizeof(pthread_rwlock_t));
@@ -432,10 +432,17 @@ int rumpuser_rw_held(int lk, void *rw, int *held)
     return 0;
 }
 
-/* Misc */
+/*
+ * Misc
+ */
 void rumpuser_seterrno(int e) { errno = e; }
 int rumpuser_kill(int64_t pid, int sig) { return kill((pid_t)pid, sig) < 0 ? errno : 0; }
 int rumpuser_mutex_held(void *mtx, int *held) { *held = 1; return 0; } /* Stub */
+
+/*
+ * Test program
+ */
+#ifdef RUMPUSER_TEST
 
 int main(void)
 {
@@ -461,6 +468,17 @@ int main(void)
     printf("RW lock held: %s\n", held ? "YES" : "NO");
     rumpuser_rw_exit(1, rw);
     rumpuser_rw_destroy(rw);
+    
+    /* Test bio */
+    int fd;
+    if (rumpuser_open("/tmp/rump_test_bio", 0x06, &fd) == 0) {  /* O_RDWR|O_CREAT */
+        char buf[512] = "Hello Rump!";
+        rumpuser_bio(fd, 0, buf, sizeof(buf), 0, NULL, NULL);  /* WRITE */
+        memset(buf, 0, sizeof(buf));
+        rumpuser_bio(fd, 1, buf, sizeof(buf), 0, NULL, NULL);  /* READ */
+        printf("Bio test: %s\n", strncmp(buf, "Hello", 5) == 0 ? "OK" : "FAIL");
+        rumpuser_close(fd);
+    }
     
     printf("\n=== All tests passed! ===\n");
     return 0;
