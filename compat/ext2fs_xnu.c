@@ -1,5 +1,5 @@
 /* ext2fs_xnu.c - XNU-compatible Hurd ext2fs translator
-   Simplified filesystem translator using POSIX filesystem calls */
+   Fixed MIG signatures */
 
 #include <stdlib.h>
 #include <string.h>
@@ -21,7 +21,6 @@
 /* File handle table */
 #define MAX_FILES 256
 static int file_fds[MAX_FILES];
-static char file_paths[MAX_FILES][256];
 static int file_count = 0;
 static pthread_mutex_t fs_lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -29,19 +28,19 @@ static struct port_bucket *fs_bucket;
 static struct port_class *fs_portclass;
 
 /* Helpers */
-static int port_to_fd(mach_port_t port) {
+static int port_to_fd(file_t port) {
     unsigned int idx = (unsigned int)port & 0xFF;
     if (idx < MAX_FILES && file_fds[idx] >= 0)
         return file_fds[idx];
     return -1;
 }
 
-static mach_port_t fd_to_port(int fd) {
+static file_t fd_to_port(int fd) {
     pthread_mutex_lock(&fs_lock);
     int idx = file_count++ % MAX_FILES;
     file_fds[idx] = fd;
     pthread_mutex_unlock(&fs_lock);
-    return (mach_port_t)(idx | 0x200);
+    return (file_t)(idx | 0x200);
 }
 
 /* Initialize ext2fs server */
@@ -59,20 +58,17 @@ int ext2fs_server_init(void)
     return 0;
 }
 
-/* 22000: Directory lookup */
+/* 22000: Directory lookup - uses data_t (char*) for name */
 kern_return_t
-dir_lookup(mach_port_t dir,
-           char *name, mach_msg_type_number_t nameCnt,
-           int flags, int mode,
+dir_lookup(file_t dir,
+           data_t name, mach_msg_type_number_t nameCnt,
+           int flags, mode_t mode,
            int *do_retry,
-           char **retry_name, mach_msg_type_number_t *retry_nameCnt,
+           data_t *retry_name, mach_msg_type_number_t *retry_nameCnt,
            mach_port_t *file)
 {
     int dir_fd = port_to_fd(dir);
-    if (dir_fd < 0) {
-        /* Assume root lookup */
-        dir_fd = AT_FDCWD;
-    }
+    if (dir_fd < 0) dir_fd = AT_FDCWD;
     
     char path[256];
     snprintf(path, sizeof(path), "%.*s", (int)nameCnt, name);
@@ -93,8 +89,8 @@ dir_lookup(mach_port_t dir,
 
 /* 22001: Read directory */
 kern_return_t
-dir_readdir(mach_port_t dir,
-            char **data, mach_msg_type_number_t *dataCnt,
+dir_readdir(file_t dir,
+            data_t *data, mach_msg_type_number_t *dataCnt,
             int entry, int nentries, int bufsiz,
             int *amount)
 {
@@ -117,7 +113,7 @@ dir_readdir(mach_port_t dir,
     struct dirent *de;
     while ((de = readdir(dp)) && entries_read < nentries) {
         size_t len = strlen(de->d_name) + 1;
-        if (bytes_used + len > (size_t)bufsiz) break;
+        if (bytes_used + (int)len > bufsiz) break;
         
         memcpy(ptr, de->d_name, len);
         ptr += len;
@@ -131,11 +127,11 @@ dir_readdir(mach_port_t dir,
     return 0;
 }
 
-/* 22002: Make directory */
+/* 22002: Make directory - uses data_t for name */
 kern_return_t
-dir_mkdir(mach_port_t dir,
-          char *name, mach_msg_type_number_t nameCnt,
-          int mode)
+dir_mkdir(file_t dir,
+          data_t name, mach_msg_type_number_t nameCnt,
+          mode_t mode)
 {
     int dir_fd = port_to_fd(dir);
     if (dir_fd < 0) dir_fd = AT_FDCWD;
@@ -150,8 +146,8 @@ dir_mkdir(mach_port_t dir,
 
 /* 22003: Remove directory */
 kern_return_t
-dir_rmdir(mach_port_t dir,
-          char *name, mach_msg_type_number_t nameCnt)
+dir_rmdir(file_t dir,
+          data_t name, mach_msg_type_number_t nameCnt)
 {
     int dir_fd = port_to_fd(dir);
     if (dir_fd < 0) dir_fd = AT_FDCWD;
@@ -166,8 +162,8 @@ dir_rmdir(mach_port_t dir,
 
 /* 22004: Unlink file */
 kern_return_t
-dir_unlink(mach_port_t dir,
-           char *name, mach_msg_type_number_t nameCnt)
+dir_unlink(file_t dir,
+           data_t name, mach_msg_type_number_t nameCnt)
 {
     int dir_fd = port_to_fd(dir);
     if (dir_fd < 0) dir_fd = AT_FDCWD;
@@ -182,9 +178,9 @@ dir_unlink(mach_port_t dir,
 
 /* 22005: Link */
 kern_return_t
-dir_link(mach_port_t dir,
-         mach_port_t source,
-         char *name, mach_msg_type_number_t nameCnt,
+dir_link(file_t dir,
+         file_t source,
+         data_t name, mach_msg_type_number_t nameCnt,
          int excl)
 {
     /* Hard links require source path - simplified stub */
@@ -193,10 +189,10 @@ dir_link(mach_port_t dir,
 
 /* 22006: Rename */
 kern_return_t
-dir_rename(mach_port_t olddir,
-           char *oldname, mach_msg_type_number_t oldnameCnt,
-           mach_port_t newdir,
-           char *newname, mach_msg_type_number_t newnameCnt,
+dir_rename(file_t olddir,
+           data_t oldname, mach_msg_type_number_t oldnameCnt,
+           file_t newdir,
+           data_t newname, mach_msg_type_number_t newnameCnt,
            int excl)
 {
     int old_fd = port_to_fd(olddir);
@@ -215,7 +211,7 @@ dir_rename(mach_port_t olddir,
 
 /* 22007: Make file */
 kern_return_t
-dir_mkfile(mach_port_t dir, int flags, int mode, mach_port_t *file)
+dir_mkfile(file_t dir, int flags, mode_t mode, mach_port_t *file)
 {
     int dir_fd = port_to_fd(dir);
     if (dir_fd < 0) dir_fd = AT_FDCWD;
@@ -235,8 +231,8 @@ dir_mkfile(mach_port_t dir, int flags, int mode, mach_port_t *file)
 
 /* 22008: Get stat */
 kern_return_t
-file_getstat(mach_port_t file,
-             char **stat_data, mach_msg_type_number_t *stat_dataCnt)
+file_getstat(file_t file,
+             data_t *stat_data, mach_msg_type_number_t *stat_dataCnt)
 {
     int fd = port_to_fd(file);
     if (fd < 0) return EBADF;
@@ -255,8 +251,8 @@ file_getstat(mach_port_t file,
 
 /* 22009: Set stat */
 kern_return_t
-file_setstat(mach_port_t file,
-             char *stat_data, mach_msg_type_number_t stat_dataCnt,
+file_setstat(file_t file,
+             data_t stat_data, mach_msg_type_number_t stat_dataCnt,
              int stat_flags)
 {
     int fd = port_to_fd(file);
@@ -272,7 +268,7 @@ file_setstat(mach_port_t file,
 
 /* 22010: Sync */
 kern_return_t
-file_sync(mach_port_t file, int wait, int omit_metadata)
+file_sync(file_t file, int wait, int omit_metadata)
 {
     int fd = port_to_fd(file);
     if (fd < 0) return EBADF;
@@ -284,9 +280,9 @@ file_sync(mach_port_t file, int wait, int omit_metadata)
     return 0;
 }
 
-/* 22011: Set size */
+/* 22011: Set size - uses off_t (int64) */
 kern_return_t
-file_set_size(mach_port_t file, int64_t size)
+file_set_size(file_t file, off_t size)
 {
     int fd = port_to_fd(file);
     if (fd < 0) return EBADF;
@@ -296,11 +292,11 @@ file_set_size(mach_port_t file, int64_t size)
     return 0;
 }
 
-/* 22015: Read */
+/* 22015: Read - uses off_t (int64) */
 kern_return_t
-io_read(mach_port_t io,
-        char **data, mach_msg_type_number_t *dataCnt,
-        int64_t offset, int amount)
+io_read(io_t io,
+        data_t *data, mach_msg_type_number_t *dataCnt,
+        off_t offset, int amount)
 {
     int fd = port_to_fd(io);
     if (fd < 0) return EBADF;
@@ -321,9 +317,9 @@ io_read(mach_port_t io,
 
 /* 22016: Write */
 kern_return_t
-io_write(mach_port_t io,
-         char *data, mach_msg_type_number_t dataCnt,
-         int64_t offset, int *amount)
+io_write(io_t io,
+         data_t data, mach_msg_type_number_t dataCnt,
+         off_t offset, int *amount)
 {
     int fd = port_to_fd(io);
     if (fd < 0) return EBADF;

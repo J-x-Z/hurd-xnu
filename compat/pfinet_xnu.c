@@ -1,5 +1,5 @@
 /* pfinet_xnu.c - XNU-compatible Hurd pfinet (TCP/IP) server
-   Simplified implementation using BSD sockets */
+   Fixed MIG signatures */
 
 #include <stdlib.h>
 #include <string.h>
@@ -26,13 +26,21 @@ static pthread_mutex_t socket_lock = PTHREAD_MUTEX_INITIALIZER;
 static struct port_bucket *pfinet_bucket;
 static struct port_class *pfinet_portclass;
 
-/* Map Hurd socket to fd */
-static int port_to_fd(mach_port_t port) {
-    /* Simplified: use port value as index */
+/* Map socket_t port to fd */
+static int port_to_fd(socket_t port) {
     unsigned int idx = (unsigned int)port & 0xFF;
     if (idx < MAX_SOCKETS && socket_fds[idx] >= 0)
         return socket_fds[idx];
     return -1;
+}
+
+/* Create socket port from fd */
+static socket_t fd_to_port(int fd) {
+    pthread_mutex_lock(&socket_lock);
+    int idx = socket_count++ % MAX_SOCKETS;
+    socket_fds[idx] = fd;
+    pthread_mutex_unlock(&socket_lock);
+    return (socket_t)(idx | 0x100);
 }
 
 /* Initialize pfinet server */
@@ -52,7 +60,7 @@ int pfinet_server_init(void)
 
 /* 26100: Create socket */
 kern_return_t
-socket_create(mach_port_t server,
+socket_create(socket_t server,
               int sock_type, int protocol,
               mach_port_t *sock)
 {
@@ -62,18 +70,13 @@ socket_create(mach_port_t server,
         return errno;
     }
     
-    pthread_mutex_lock(&socket_lock);
-    int idx = socket_count++ % MAX_SOCKETS;
-    socket_fds[idx] = fd;
-    *sock = (mach_port_t)(idx | 0x100);  /* Simple mapping */
-    pthread_mutex_unlock(&socket_lock);
-    
+    *sock = fd_to_port(fd);
     return 0;
 }
 
-/* 26101: Bind */
+/* 26101: Bind - sockaddr_t is char[16] */
 kern_return_t
-socket_bind(mach_port_t sock, char addr[16])
+socket_bind(socket_t sock, sockaddr_t addr)
 {
     int fd = port_to_fd(sock);
     if (fd < 0) return EBADF;
@@ -88,7 +91,7 @@ socket_bind(mach_port_t sock, char addr[16])
 
 /* 26102: Listen */
 kern_return_t
-socket_listen(mach_port_t sock, int backlog)
+socket_listen(socket_t sock, int backlog)
 {
     int fd = port_to_fd(sock);
     if (fd < 0) return EBADF;
@@ -98,11 +101,11 @@ socket_listen(mach_port_t sock, int backlog)
     return 0;
 }
 
-/* 26103: Accept */
+/* 26103: Accept - sockaddr_t* is pointer to char[16] */
 kern_return_t
-socket_accept(mach_port_t sock,
+socket_accept(socket_t sock,
               mach_port_t *conn,
-              char peer_addr[16])
+              sockaddr_t *peer_addr)
 {
     int fd = port_to_fd(sock);
     if (fd < 0) return EBADF;
@@ -115,19 +118,14 @@ socket_accept(mach_port_t sock,
         return errno;
     }
     
-    pthread_mutex_lock(&socket_lock);
-    int idx = socket_count++ % MAX_SOCKETS;
-    socket_fds[idx] = newfd;
-    *conn = (mach_port_t)(idx | 0x100);
-    pthread_mutex_unlock(&socket_lock);
-    
-    memcpy(peer_addr, &sin, 16);
+    *conn = fd_to_port(newfd);
+    memcpy(*peer_addr, &sin, 16);
     return 0;
 }
 
 /* 26104: Connect */
 kern_return_t
-socket_connect(mach_port_t sock, char addr[16])
+socket_connect(socket_t sock, sockaddr_t addr)
 {
     int fd = port_to_fd(sock);
     if (fd < 0) return EBADF;
@@ -140,10 +138,10 @@ socket_connect(mach_port_t sock, char addr[16])
     return 0;
 }
 
-/* 26105: Send */
+/* 26105: Send - data_t is char* */
 kern_return_t
-socket_send(mach_port_t sock,
-            char *data, mach_msg_type_number_t dataCnt,
+socket_send(socket_t sock,
+            data_t data, mach_msg_type_number_t dataCnt,
             int flags, int *amount)
 {
     int fd = port_to_fd(sock);
@@ -160,8 +158,8 @@ socket_send(mach_port_t sock,
 
 /* 26106: Receive */
 kern_return_t
-socket_recv(mach_port_t sock,
-            char **data, mach_msg_type_number_t *dataCnt,
+socket_recv(socket_t sock,
+            data_t *data, mach_msg_type_number_t *dataCnt,
             int flags, int amount)
 {
     int fd = port_to_fd(sock);
@@ -183,7 +181,7 @@ socket_recv(mach_port_t sock,
 
 /* 26107: Get socket name */
 kern_return_t
-socket_name(mach_port_t sock, char addr[16])
+socket_name(socket_t sock, sockaddr_t *addr)
 {
     int fd = port_to_fd(sock);
     if (fd < 0) return EBADF;
@@ -193,13 +191,13 @@ socket_name(mach_port_t sock, char addr[16])
     if (getsockname(fd, (struct sockaddr *)&sin, &len) < 0)
         return errno;
     
-    memcpy(addr, &sin, 16);
+    memcpy(*addr, &sin, 16);
     return 0;
 }
 
 /* 26108: Get peer name */
 kern_return_t
-socket_peername(mach_port_t sock, char addr[16])
+socket_peername(socket_t sock, sockaddr_t *addr)
 {
     int fd = port_to_fd(sock);
     if (fd < 0) return EBADF;
@@ -209,13 +207,13 @@ socket_peername(mach_port_t sock, char addr[16])
     if (getpeername(fd, (struct sockaddr *)&sin, &len) < 0)
         return errno;
     
-    memcpy(addr, &sin, 16);
+    memcpy(*addr, &sin, 16);
     return 0;
 }
 
 /* 26109: Shutdown */
 kern_return_t
-socket_shutdown(mach_port_t sock, int how)
+socket_shutdown(socket_t sock, int how)
 {
     int fd = port_to_fd(sock);
     if (fd < 0) return EBADF;
@@ -227,9 +225,9 @@ socket_shutdown(mach_port_t sock, int how)
 
 /* 26110: Get socket option */
 kern_return_t
-socket_getopt(mach_port_t sock,
+socket_getopt(socket_t sock,
               int level, int option,
-              char **optval, mach_msg_type_number_t *optvalCnt)
+              data_t *optval, mach_msg_type_number_t *optvalCnt)
 {
     int fd = port_to_fd(sock);
     if (fd < 0) return EBADF;
@@ -250,9 +248,9 @@ socket_getopt(mach_port_t sock,
 
 /* 26111: Set socket option */
 kern_return_t
-socket_setopt(mach_port_t sock,
+socket_setopt(socket_t sock,
               int level, int option,
-              char *optval, mach_msg_type_number_t optvalCnt)
+              data_t optval, mach_msg_type_number_t optvalCnt)
 {
     int fd = port_to_fd(sock);
     if (fd < 0) return EBADF;
