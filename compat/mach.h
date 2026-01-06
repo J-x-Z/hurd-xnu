@@ -60,6 +60,7 @@ typedef mach_port_t exec_startup_t;
 typedef char *data_t;
 typedef unsigned int *intarray_t;
 typedef unsigned int *idarray_t;
+typedef mach_port_t *portarray_t;
 typedef int retry_type;
 typedef char *string_t;
 

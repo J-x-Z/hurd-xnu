@@ -25,7 +25,7 @@
 #ifdef REFCOUNT_DEFINE_EI
 #define REFCOUNT_EI
 #else
-#define REFCOUNT_EI __extern_inline
+#define REFCOUNT_EI static inline
 #endif
 
 #include <assert-backtrace.h>
